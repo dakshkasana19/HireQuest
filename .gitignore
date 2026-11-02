@@ -1,0 +1,4 @@
+# Environment & Config
+config.js
+.env
+*.local

@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HireQuest: ATS & SWOT Evaluator</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- PDF.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+  <!-- Google Fonts: Press Start 2P & VT323 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+
+  <script>
+    // PDF.js worker setup
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  </script>
+
+  <style>
+    :root {
+      --pixel-font-title: 'Press Start 2P', monospace;
+      --pixel-font-body: 'VT323', monospace;
+    }
+
+    body {
+      font-family: var(--pixel-font-body);
+      /* Use the exact pixel landscape reference provided by the user */
+      background-image: url('pixel_bg.jpg');
+      background-size: cover;
+      background-position: center bottom;
+      background-attachment: fixed;
+      background-repeat: no-repeat;
+      image-rendering: pixelated;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .font-pixel-title {
+      font-family: var(--pixel-font-title);
+      letter-spacing: -0.5px;
+    }
+
+    .font-pixel-body {
+      font-family: var(--pixel-font-body);
+    }
+
+    /* Screen 1 Retro Box */
+    .screen1-box {
+      background-color: #fef08a; /* Warm retro yellow/parchment */
+      border: 4px solid #111827;
+      box-shadow: 6px 6px 0px #111827;
+    }
+
+    /* Screen 2 Exact Reference Translucent Card */
+    .screen2-glass-card {
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 4px solid #1a1a1a;
+      border-radius: 18px;
+      color: #1e293b;
+      box-shadow: 8px 8px 0px rgba(17, 24, 39, 0.9);
+    }
+
+    .retro-border {
+      border: 3px solid #111827;
+      box-shadow: 3px 3px 0px #111827;
+    }
+
+    .retro-inset {
+      border: 3px solid #111827;
+      box-shadow: inset 2px 2px 0px rgba(0, 0, 0, 0.25);
+    }
+
+    /* Tactile Pixel Buttons */
+    .pixel-btn {
+      font-family: var(--pixel-font-title);
+      border: 4px solid #111827;
+      transition: all 0.08s ease-in-out;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+
+    .pixel-btn:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 6px 6px 0px #111827;
+    }
+
+    .pixel-btn:active {
+      transform: translate(2px, 2px);
+      box-shadow: 1px 1px 0px #111827;
+    }
+
+    .pixel-btn-green {
+      background-color: #22c55e;
+      color: #052e16;
+      box-shadow: 4px 4px 0px #052e16;
+      border-color: #052e16;
+    }
+    .pixel-btn-green:hover {
+      background-color: #4ade80;
+      box-shadow: 6px 6px 0px #052e16;
+    }
+    .pixel-btn-green:active {
+      box-shadow: 1px 1px 0px #052e16;
+    }
+
+    .pixel-btn-dark {
+      background-color: #1e293b;
+      color: #f8fafc;
+      box-shadow: 4px 4px 0px #020617;
+      border-color: #020617;
+    }
+    .pixel-btn-dark:hover {
+      background-color: #334155;
+      box-shadow: 6px 6px 0px #020617;
+    }
+    .pixel-btn-dark:active {
+      box-shadow: 1px 1px 0px #020617;
+    }
+
+    /* Pixel Score Progress Cells */
+    .pixel-bar-cell {
+      width: 14px;
+      height: 22px;
+      margin-right: 3px;
+      border: 2px solid #111827;
+      background-color: #e2e8f0;
+      display: inline-block;
+    }
+    .pixel-bar-cell.filled {
+      background-color: #22c55e;
+    }
+    .pixel-bar-cell.warning {
+      background-color: #eab308;
+    }
+    .pixel-bar-cell.danger {
+      background-color: #ef4444;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border: 2px solid #0f172a;
+    }
+  </style>
+</head>
+<body class="min-h-screen text-slate-900 relative antialiased flex flex-col justify-between selection:bg-emerald-400 selection:text-slate-950">
+
+  <!-- MAIN VIEWPORT CONTAINER -->
+  <main class="w-full flex-grow relative z-10 p-3 sm:p-5 md:p-8 flex flex-col items-center justify-center">
+
+    <!-- ========================================== -->
+    <!-- SCREEN 1: LANDING & FILE UPLOAD           -->
+    <!-- Reference: Pure pixel landscape backdrop   -->
+    <!-- ========================================== -->
+    <section id="screen-1" class="w-full max-w-4xl mx-auto my-auto block">
+      
+      <!-- Central Retro Box -->
+      <div class="screen1-box p-4 sm:p-6 md:p-8 relative">
+        
+        <!-- Header Banner -->
+        <div class="border-b-4 border-slate-900 pb-4 mb-5">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <span class="inline-block bg-emerald-700 text-yellow-200 px-3 py-1 text-xs md:text-sm font-pixel-title border-2 border-slate-900">
+              [QUEST #C9] RESUME EVALUATOR
+            </span>
+            <span class="inline-block bg-amber-400 text-slate-950 px-3 py-1 text-xs md:text-sm font-pixel-title border-2 border-slate-900">
+              8-BIT ENGINE READY
+            </span>
+          </div>
+
+          <h1 class="text-xl sm:text-2xl md:text-3xl text-slate-950 font-pixel-title leading-tight tracking-wider mb-2">
+            HireQuest: ATS & SWOT Evaluator
+          </h1>
+          <p class="text-lg md:text-xl text-slate-800 font-pixel-body">
+            Problem Pool C9: Resume Feedback Against a Job Description — Bennett University Prompt Engineering Mini-Project
+          </p>
+        </div>
+
+        <!-- Form Elements -->
+        <form id="evaluation-form" onsubmit="handleEvaluationSubmit(event)" class="space-y-4">
+          
+          <!-- RESUME INPUT CONTAINER -->
+          <div class="bg-white p-3 sm:p-4 border-4 border-slate-900">
+            <div class="flex items-center justify-between mb-2">
+              <label class="text-xs sm:text-sm md:text-base font-pixel-title text-slate-900 flex items-center gap-2">
+                <span class="text-emerald-600">►</span> 1. CANDIDATE RESUME (PDF / TEXT)
+              </label>
+              <span id="file-status-badge" class="hidden text-xs bg-emerald-100 text-emerald-800 border-2 border-emerald-700 px-2 py-0.5 font-pixel-title">
+                PARSED ✓
+              </span>
+            </div>
+
+            <!-- PDF File Upload Input with PDF.js -->
+            <div class="mb-3">
+              <div class="relative border-2 border-dashed border-slate-900 bg-emerald-50/50 hover:bg-emerald-100/60 p-4 text-center cursor-pointer transition">
+                <input 
+                  type="file" 
+                  id="resume-file-input" 
+                  accept=".pdf" 
+                  class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  onchange="handleFileUpload(event)"
+                />
+                <div class="space-y-1">
+                  <p class="font-pixel-title text-xs sm:text-sm text-slate-900">
+                    CLICK OR DRAG CANDIDATE RESUME [.PDF]
+                  </p>
+                  <p class="text-sm md:text-base text-slate-700">
+                    Client-side PDF.js parsing (Zero server upload needed)
+                  </p>
+                </div>
+              </div>
+              <div id="pdf-feedback" class="text-xs md:text-sm font-mono mt-1 text-slate-800 hidden"></div>
+            </div>
+
+            <!-- Optional Textarea Fallback -->
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-pixel-title text-slate-600">OR PASTE RESUME TEXT DIRECTLY:</span>
+                <button type="button" onclick="loadSampleResume()" class="text-xs underline text-emerald-800 hover:text-emerald-950 font-pixel-title">
+                  [LOAD SAMPLE RESUME]
+                </button>
+              </div>
+              <textarea 
+                id="resume-text" 
+                rows="4" 
+                placeholder="Paste plain text resume content here if you don't have a PDF..."
+                class="w-full p-2.5 text-base md:text-lg bg-slate-50 text-slate-900 retro-inset focus:outline-none focus:bg-white resize-y"
+              ></textarea>
+            </div>
+          </div>
+
+          <!-- TARGET JOB DESCRIPTION CONTAINER -->
+          <div class="bg-white p-3 sm:p-4 border-4 border-slate-900">
+            <div class="flex items-center justify-between mb-1">
+              <label for="job-description" class="text-xs sm:text-sm md:text-base font-pixel-title text-slate-900 flex items-center gap-2">
+                <span class="text-emerald-600">►</span> 2. TARGET JOB DESCRIPTION (JD)
+              </label>
+              <button type="button" onclick="loadSampleJD()" class="text-xs underline text-emerald-800 hover:text-emerald-950 font-pixel-title">
+                [LOAD SAMPLE JD]
+              </button>
+            </div>
+            <textarea 
+              id="job-description" 
+              rows="4" 
+              required
+              placeholder="Paste target job requirements, qualifications, and core technical skills..."
+              class="w-full p-2.5 text-base md:text-lg bg-slate-50 text-slate-900 retro-inset focus:outline-none focus:bg-white resize-y"
+            ></textarea>
+          </div>
+
+          <!-- SUBMIT ACTION BUTTON -->
+          <div class="pt-2 text-center">
+            <button 
+              type="submit" 
+              id="submit-btn" 
+              class="pixel-btn pixel-btn-green w-full py-4 px-6 text-xl md:text-2xl tracking-widest"
+            >
+              <span id="btn-icon">⚡</span>
+              <span id="btn-text" class="ml-2">EXECUTE HIREQUEST [GO!]</span>
+            </button>
+          </div>
+
+        </form>
+
+        <!-- Loading Screen Indicator -->
+        <div id="loading-overlay" class="hidden absolute inset-0 bg-yellow-100/95 z-20 flex flex-col items-center justify-center p-6 text-center border-4 border-slate-900">
+          <div class="w-16 h-16 border-8 border-slate-900 border-t-emerald-500 rounded-none animate-spin mb-4"></div>
+          <p class="text-xl md:text-2xl font-pixel-title text-slate-900 mb-2">RUNNING ATS & SWOT SYNTHESIS...</p>
+          <p id="loading-status-text" class="text-lg md:text-xl font-mono text-slate-700">Extracting syntax and calculating vector alignment...</p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- SCREEN 2: SWOT REPORT & EVALUATION OVERLAY -->
+    <!-- Matches Image 2: Wide translucent card over-->
+    <!-- the pixel clouds, trees, and sky landscape -->
+    <!-- ========================================== -->
+    <section id="screen-2" class="w-full max-w-5xl mx-auto my-auto hidden pb-24">
+      
+      <!-- Overlaid Translucent White Card exactly matching the reference design -->
+      <div class="screen2-glass-card p-5 sm:p-7 md:p-9 relative">
+        
+        <!-- Header row of the evaluation report -->
+        <div class="border-b-4 border-slate-900 pb-5 mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="bg-slate-900 text-yellow-300 font-pixel-title text-xs px-2.5 py-1">
+                EVALUATION RESULT
+              </span>
+              <span id="evaluation-mode-badge" class="bg-emerald-700 text-white font-pixel-title text-xs px-2.5 py-1">
+                OFFLINE SIMULATION
+              </span>
+            </div>
+            <h2 class="text-xl sm:text-2xl md:text-3xl font-pixel-title text-slate-950 tracking-tight">
+              HireQuest ATS & SWOT Analysis Report
+            </h2>
+            <p class="text-sm md:text-base font-mono text-slate-700 mt-0.5">
+              Target Fit Analysis Against Specified Job Requirements
+            </p>
+          </div>
+
+          <!-- Overall Score Card -->
+          <div class="bg-white/95 border-4 border-slate-900 p-3 md:p-4 text-center min-w-[210px] shadow-[4px_4px_0px_#1a1a1a]">
+            <div class="text-xs font-pixel-title text-slate-600 mb-1">MATCH RATING SCORE</div>
+            <div class="flex items-baseline justify-center gap-1">
+              <span id="score-number" class="text-4xl md:text-5xl font-pixel-title text-emerald-600 font-black">88</span>
+              <span class="text-xl font-pixel-title text-slate-500">/100</span>
+            </div>
+            <!-- Pixelated progress indicator -->
+            <div id="pixel-score-bar" class="flex justify-center mt-2 flex-wrap max-w-[200px] mx-auto">
+              <!-- Rendered via JavaScript -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Executive Summary Section -->
+        <div class="mb-5 bg-white/80 border-4 border-slate-900 p-4 shadow-[4px_4px_0px_#1a1a1a]">
+          <h3 class="text-xs sm:text-sm md:text-base font-pixel-title text-slate-900 mb-2 flex items-center gap-2">
+            <span class="text-emerald-600">■</span> EXECUTIVE EVALUATION SUMMARY
+          </h3>
+          <p id="evaluation-summary" class="text-lg md:text-xl font-pixel-body text-slate-800 leading-relaxed">
+            Loading summary...
+          </p>
+        </div>
+
+        <!-- Missing Keyword Tags Section -->
+        <div class="mb-6 bg-amber-50/90 border-4 border-slate-900 p-4 shadow-[4px_4px_0px_#1a1a1a]">
+          <h3 class="text-xs sm:text-sm md:text-base font-pixel-title text-amber-950 mb-2 flex items-center gap-2">
+            <span class="text-amber-600">▲</span> ATS MISSING / UNDER-INDEXED KEYWORDS
+          </h3>
+          <div id="missing-keywords-container" class="flex flex-wrap gap-2 pt-1">
+            <!-- Tags inserted dynamically -->
+          </div>
+        </div>
+
+        <!-- SWOT CANDIDATE EVALUATION FRAMEWORK (4 CLEAR PILLARS) -->
+        <div class="mb-4">
+          <h3 class="text-sm sm:text-base md:text-lg font-pixel-title text-slate-950 mb-3 flex items-center gap-2">
+            <span class="text-indigo-600">★</span> SWOT CANDIDATE EVALUATION FRAMEWORK
+          </h3>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            <!-- [S] Strengths Card -->
+            <div class="bg-emerald-50/90 border-4 border-slate-900 p-4 shadow-[4px_4px_0px_#1a1a1a] flex flex-col justify-between">
+              <div>
+                <div class="flex items-center gap-2 mb-2 pb-2 border-b-2 border-slate-900">
+                  <span class="bg-emerald-600 text-white font-pixel-title text-xs px-2 py-0.5 border border-slate-900">S</span>
+                  <h4 class="font-pixel-title text-xs md:text-sm text-emerald-950">STRENGTHS (CORE SKILLS & FIT)</h4>
+                </div>
+                <p class="text-xs font-mono text-emerald-900 font-semibold mb-2">
+                  Candidate's core technical skills and alignment with the job description:
+                </p>
+                <div id="swot-strengths" class="text-base md:text-lg font-pixel-body text-slate-800 leading-snug">
+                  Candidate demonstrates strong core competencies.
+                </div>
+              </div>
+              <div class="mt-4 pt-2 border-t border-emerald-200 text-xs font-mono text-emerald-800">
+                Strategic Focus: Highlight these proven achievements in technical rounds.
+              </div>
+            </div>
+
+            <!-- [W] Weaknesses Card -->
+            <div class="bg-rose-50/90 border-4 border-slate-900 p-4 shadow-[4px_4px_0px_#1a1a1a] flex flex-col justify-between">
+              <div>
+                <div class="flex items-center gap-2 mb-2 pb-2 border-b-2 border-slate-900">
+                  <span class="bg-rose-600 text-white font-pixel-title text-xs px-2 py-0.5 border border-slate-900">W</span>
+                  <h4 class="font-pixel-title text-xs md:text-sm text-rose-950">WEAKNESSES (SKILL GAPS & MISMATCHES)</h4>
+                </div>
+                <p class="text-xs font-mono text-rose-900 font-semibold mb-2">
+                  Skill gaps, missing tools, or experience mismatches:
+                </p>
+                <div id="swot-weaknesses" class="text-base md:text-lg font-pixel-body text-slate-800 leading-snug">
+                  Experience gaps that need clarification.
+                </div>
+              </div>
+              <div class="mt-4 pt-2 border-t border-rose-200 text-xs font-mono text-rose-800">
+                Mitigation: Frame missing toolchains as quick-learning ramp-ups.
+              </div>
+            </div>
+
+            <!-- [O] Opportunities Card -->
+            <div class="bg-blue-50/90 border-4 border-slate-900 p-4 shadow-[4px_4px_0px_#1a1a1a] flex flex-col justify-between">
+              <div>
+                <div class="flex items-center gap-2 mb-2 pb-2 border-b-2 border-slate-900">
+                  <span class="bg-blue-600 text-white font-pixel-title text-xs px-2 py-0.5 border border-slate-900">O</span>
+                  <h4 class="font-pixel-title text-xs md:text-sm text-blue-950">OPPORTUNITIES (INTERVIEW PIVOTS & ENHANCEMENT)</h4>
+                </div>
+                <p class="text-xs font-mono text-blue-900 font-semibold mb-2">
+                  Areas for high-impact interview pivoting and resume enhancement:
+                </p>
+                <div id="swot-opportunities" class="text-base md:text-lg font-pixel-body text-slate-800 leading-snug">
+                  High-leverage engineering & problem-solving anecdotes.
+                </div>
+              </div>
+              <div class="mt-4 pt-2 border-t border-blue-200 text-xs font-mono text-blue-800">
+                Action: Emphasize quantifiable business impact and architecture decisions.
+              </div>
+            </div>
+
+            <!-- [T] Threats Card -->
+            <div class="bg-amber-50/90 border-4 border-slate-900 p-4 shadow-[4px_4px_0px_#1a1a1a] flex flex-col justify-between">
+              <div>
+                <div class="flex items-center gap-2 mb-2 pb-2 border-b-2 border-slate-900">
+                  <span class="bg-amber-600 text-white font-pixel-title text-xs px-2 py-0.5 border border-slate-900">T</span>
+                  <h4 class="font-pixel-title text-xs md:text-sm text-amber-950">THREATS (RISKS VS. COMPETITIVE APPLICANTS)</h4>
+                </div>
+                <p class="text-xs font-mono text-amber-900 font-semibold mb-2">
+                  Potential risks in the candidate profile compared to competitive applicants:
+                </p>
+                <div id="swot-threats" class="text-base md:text-lg font-pixel-body text-slate-800 leading-snug">
+                  Competitive candidate considerations and differentiation risks.
+                </div>
+              </div>
+              <div class="mt-4 pt-2 border-t border-amber-200 text-xs font-mono text-amber-800">
+                Defense: Counter with concrete proof-of-work and rapid delivery metrics.
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ======================================================== -->
+  <!-- STRICT REQUIREMENT: FIXED RETRO PIXEL BUTTON AT BOTTOM-LEFT -->
+  <!-- ======================================================== -->
+  <div id="bottom-left-nav" class="fixed bottom-4 left-4 z-40 hidden">
+    <button 
+      type="button" 
+      onclick="returnToUploadScreen()" 
+      class="pixel-btn pixel-btn-dark px-4 py-3 text-xs md:text-sm flex items-center gap-2"
+      title="Reset interface and go back to input screen"
+    >
+      <span>◄</span>
+      <span>Back to Upload</span>
+    </button>
+  </div>
+
+  <!-- OPTIONAL EXTERNAL CONFIG FOR API KEY (IGNORED BY GIT) -->
+  <script src="config.js" onerror="console.log('config.js not found, fallback to simulation mode')"></script>
+
+  <!-- APPLICATION JAVASCRIPT LOGIC -->
+  <script>
+    const API_KEY = (typeof GEMINI_API_KEY !== 'undefined') ? GEMINI_API_KEY : '';
+
+    const state = {
+      extractedResumeText: '',
+      currentScreen: 1,
+      isAnalyzing: false
+    };
+
+    // Client-side PDF Text Extraction using PDF.js CDN
+    async function handleFileUpload(event) {
+      const file = event.target.files[0];
+      const feedbackEl = document.getElementById('pdf-feedback');
+      const badgeEl = document.getElementById('file-status-badge');
+
+      if (!file) return;
+
+      if (file.type !== 'application/pdf' && !file.name.endsWith('.pdf')) {
+        alert('Please upload a valid .pdf document!');
+        return;
+      }
+
+      feedbackEl.classList.remove('hidden');
+      feedbackEl.textContent = `[PARSING] Reading ${file.name}...`;
+
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+        const pdf = await loadingTask.promise;
+        
+        let fullText = '';
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          const page = await pdf.getPage(pageNum);
+          const textContent = await page.getTextContent();
+          const pageStrings = textContent.items.map(item => item.str);
+          fullText += pageStrings.join(' ') + '\n';
+        }
+
+        const trimmed = fullText.trim();
+        if (trimmed.length > 20) {
+          state.extractedResumeText = trimmed;
+          document.getElementById('resume-text').value = trimmed;
+          feedbackEl.innerHTML = `<span class="text-emerald-700 font-bold">✓ Parsed ${file.name} successfully (${pdf.numPages} pages, ${trimmed.length} chars)</span>`;
+          badgeEl.classList.remove('hidden');
+        } else {
+          feedbackEl.innerHTML = `<span class="text-amber-700">Warning: PDF has very little extractable text (might be scanned image). Please verify below.</span>`;
+        }
+      } catch (err) {
+        console.error('PDF parsing error:', err);
+        feedbackEl.innerHTML = `<span class="text-red-700">Error reading PDF: ${err.message}. Please copy-paste into textarea fallback.</span>`;
+      }
+    }
+
+    // Sample Data Helpers for swift local testing
+    function loadSampleResume() {
+      const sample = `DAKSH KASANA
+Full Stack Developer & Prompt Engineer
+Email: daksh@example.com | GitHub: github.com/dakshkasana
+
+EXPERIENCE:
+Full Stack Developer Intern - TechCorp (2024 - Present)
+- Worked on web applications using JavaScript, HTML, CSS, React, and Node.js.
+- Fixed frontend bugs and added responsive styling.
+- Handled API integration with backend services and wrote SQL queries.
+- Participated in weekly agile standups and code reviews.
+
+PROJECTS:
+1. ATS Resume Screener & Analyzer
+- Built a web app to parse resume documents using client-side libraries.
+- Implemented heuristic keyword matching and prompt engineering techniques.
+- Integrated AI evaluation to give candidates tailored feedback.
+
+SKILLS:
+JavaScript, React.js, Tailwind CSS, Python, Node.js, REST APIs, Git, Docker (Basic), SQL`;
+      
+      document.getElementById('resume-text').value = sample;
+      state.extractedResumeText = sample;
+      document.getElementById('file-status-badge').classList.remove('hidden');
+    }
+
+    function loadSampleJD() {
+      const sample = `Role: Senior Frontend & AI Application Engineer
+Location: Remote / Hybrid
+
+We are seeking a Frontend & AI Engineer with expertise in building responsive, high-performance web applications and orchestrating LLMs.
+
+Requirements & Tech Stack:
+- 3+ years experience with React.js, Tailwind CSS, modern TypeScript/JavaScript.
+- Strong understanding of client-side browser performance, Web APIs, and PDF parsing.
+- Hands-on experience integrating LLM APIs (Gemini, Claude, or OpenAI) with structured JSON schemas.
+- Strong knowledge of CI/CD pipelines, Docker containerization, and unit/integration testing (Jest/Playwright).
+- Demonstrated ability to convert product requirements into metrics-driven user experiences.
+- Exceptional communication skills and STAR/STAB interview competencies.`;
+      
+      document.getElementById('job-description').value = sample;
+    }
+
+    async function handleEvaluationSubmit(event) {
+      event.preventDefault();
+
+      const resumeContent = (document.getElementById('resume-text').value || state.extractedResumeText).trim();
+      const jobDescription = document.getElementById('job-description').value.trim();
+
+      if (!resumeContent) {
+        alert('Please either upload a PDF resume or paste resume text!');
+        return;
+      }
+
+      if (!jobDescription) {
+        alert('Please provide the Target Job Description!');
+        return;
+      }
+
+      const overlay = document.getElementById('loading-overlay');
+      const statusText = document.getElementById('loading-status-text');
+      overlay.classList.remove('hidden');
+      
+      let evaluationResult;
+
+      try {
+        if (API_KEY && API_KEY.trim() !== "" && !API_KEY.includes("YOUR_GEMINI_API_KEY")) {
+          statusText.textContent = "Connecting to Gemini 2.5 Flash API with JSON schema...";
+          evaluationResult = await callGeminiAPI(API_KEY, resumeContent, jobDescription);
+          renderEvaluationReport(evaluationResult, true);
+        } else {
+          statusText.textContent = "Initializing offline heuristic simulation matrix...";
+          await new Promise(resolve => setTimeout(resolve, 800));
+          evaluationResult = runOfflineEvaluation(resumeContent, jobDescription);
+          renderEvaluationReport(evaluationResult, false);
+        }
+
+        transitionToScreen2();
+      } catch (error) {
+        console.error('Evaluation failure:', error);
+        evaluationResult = runOfflineEvaluation(resumeContent, jobDescription);
+        renderEvaluationReport(evaluationResult, false);
+        transitionToScreen2();
+      } finally {
+        overlay.classList.add('hidden');
+      }
+    }
+
+    // Direct Gemini 2.5 Flash REST API Integration with strict JSON Schema
+    async function callGeminiAPI(apiKey, resume, jd) {
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+      const systemInstruction = `You are an expert ATS (Applicant Tracking System) Screener and Executive Technical Recruiter.
+Evaluate the candidate's resume against the target job description using the SWOT framework:
+- S (Strengths): Candidate's core technical skills, verified achievements, and alignment with the job description.
+- W (Weaknesses): Skill gaps, missing tools, unmentioned qualifications, or experience mismatches against the requirements.
+- O (Opportunities): Areas for high-impact interview pivoting, narrative positioning, and strategic resume enhancement.
+- T (Threats): Potential risks in the candidate profile compared to competitive applicants and stringent job criteria.
+
+Return STRICT JSON complying with the specified schema without Markdown fences.`;
+
+      const prompt = `TARGET JOB DESCRIPTION:\n${jd}\n\nCANDIDATE RESUME:\n${resume}`;
+
+      const requestBody = {
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: prompt }]
+          }
+        ],
+        systemInstruction: {
+          parts: [{ text: systemInstruction }]
+        },
+        generationConfig: {
+          temperature: 0.2,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              match_score: { type: "INTEGER", description: "Match score between 0 and 100" },
+              summary: { type: "STRING", description: "Executive summary of candidate fit" },
+              missing_keywords: { 
+                type: "ARRAY", 
+                items: { type: "STRING" },
+                description: "List of key skills or credentials missing in resume but emphasized in JD" 
+              },
+              swot_report: {
+                type: "OBJECT",
+                properties: {
+                  strengths: { type: "STRING", description: "Core technical skills and alignment with JD" },
+                  weaknesses: { type: "STRING", description: "Skill gaps, missing tools, or experience mismatches" },
+                  opportunities: { type: "STRING", description: "High-impact interview pivots and resume enhancement" },
+                  threats: { type: "STRING", description: "Risks compared to competitive applicants" }
+                },
+                required: ["strengths", "weaknesses", "opportunities", "threats"]
+              }
+            },
+            required: ["match_score", "summary", "missing_keywords", "swot_report"]
+          }
+        }
+      };
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      
+      if (!rawText) {
+        throw new Error("No structured output received from Gemini API.");
+      }
+
+      return JSON.parse(rawText);
+    }
+
+    // Built-in Offline Simulation Mode (Works instantly out of the box)
+    function runOfflineEvaluation(resume, jd) {
+      const lowerResume = resume.toLowerCase();
+      const lowerJd = jd.toLowerCase();
+
+      // Common tech keyword corpus to test presence
+      const keyCorpus = [
+        "TypeScript", "React", "Docker", "Kubernetes", "CI/CD", "AWS", 
+        "GraphQL", "System Design", "Microservices", "Jest", "Playwright", 
+        "Python", "PostgreSQL", "Prompt Engineering", "LLM", "REST API",
+        "Performance Optimization", "Agile", "Tailwind CSS"
+      ];
+
+      const foundKeywords = [];
+      const missingKeywords = [];
+
+      keyCorpus.forEach(kw => {
+        const kwLower = kw.toLowerCase();
+        if (lowerJd.includes(kwLower)) {
+          if (lowerResume.includes(kwLower)) {
+            foundKeywords.push(kw);
+          } else {
+            missingKeywords.push(kw);
+          }
+        }
+      });
+
+      if (missingKeywords.length === 0) {
+        missingKeywords.push("CI/CD Automation", "Docker Containerization", "Unit Testing (Jest)", "TypeScript Strict Types");
+      }
+
+      const baseScore = 65;
+      const bonus = Math.min(25, foundKeywords.length * 6);
+      const penalty = Math.min(15, missingKeywords.length * 3);
+      const computedScore = Math.max(45, Math.min(94, baseScore + bonus - penalty));
+
+      return {
+        match_score: computedScore,
+        summary: `The candidate possesses a viable foundation for the role with verified mentions in ${foundKeywords.slice(0, 3).join(', ') || 'core web technologies'}. However, the profile currently lacks prominent emphasis on production-grade toolchains (${missingKeywords.slice(0, 2).join(', ')}), requiring strategic interview positioning under the SWOT evaluation framework.`,
+        missing_keywords: missingKeywords.slice(0, 7),
+        swot_report: {
+          strengths: `Candidate displays proven proficiencies in ${foundKeywords.slice(0, 3).join(', ') || 'modern JavaScript, React, and frontend development'}. Strong foundation in responsive UI engineering, RESTful API integrations, and collaborative agile engineering environments.`,
+          weaknesses: `Under-indexed on enterprise infrastructure and testing suites, specifically ${missingKeywords.slice(0, 2).join(' and ') || 'CI/CD automation'}. Profile would benefit from explicit mentions of automated unit/integration testing frameworks.`,
+          opportunities: `Showcase quantifiable outcomes during interviews: detail how architecture decisions reduced page load latency, mention hands-on containerization experiments, and emphasize rapid adaptation to new developer tooling.`,
+          threats: `Competing applicants may present deeper tenure in large-scale distributed deployments, microservices orchestration, or production CI/CD governance. Needs proactive mitigation through code portfolio demonstrations.`
+        }
+      };
+    }
+
+    // Render evaluation report onto Screen 2
+    function renderEvaluationReport(report, isApiMode) {
+      // Score display
+      const score = Math.max(0, Math.min(100, report.match_score || 75));
+      document.getElementById('score-number').textContent = score;
+      
+      const scoreNumEl = document.getElementById('score-number');
+      if (score >= 80) {
+        scoreNumEl.className = "text-4xl md:text-5xl font-pixel-title text-emerald-600 font-black";
+      } else if (score >= 60) {
+        scoreNumEl.className = "text-4xl md:text-5xl font-pixel-title text-amber-600 font-black";
+      } else {
+        scoreNumEl.className = "text-4xl md:text-5xl font-pixel-title text-rose-600 font-black";
+      }
+
+      // Render pixelated score bar (10 segments)
+      const barContainer = document.getElementById('pixel-score-bar');
+      barContainer.innerHTML = '';
+      const filledSegments = Math.round(score / 10);
+      for (let i = 0; i < 10; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'pixel-bar-cell';
+        if (i < filledSegments) {
+          if (score >= 80) cell.classList.add('filled');
+          else if (score >= 60) cell.classList.add('warning');
+          else cell.classList.add('danger');
+        }
+        barContainer.appendChild(cell);
+      }
+
+      // Mode Badge
+      const modeBadge = document.getElementById('evaluation-mode-badge');
+      if (isApiMode) {
+        modeBadge.textContent = "GEMINI 2.5 FLASH (API)";
+        modeBadge.className = "bg-purple-700 text-white font-pixel-title text-xs px-2.5 py-1";
+      } else {
+        modeBadge.textContent = "OFFLINE SIMULATION MODE";
+        modeBadge.className = "bg-emerald-700 text-white font-pixel-title text-xs px-2.5 py-1";
+      }
+
+      // Executive Summary
+      document.getElementById('evaluation-summary').textContent = report.summary || "No summary provided.";
+
+      // Missing Keywords
+      const keywordsContainer = document.getElementById('missing-keywords-container');
+      keywordsContainer.innerHTML = '';
+      const keywords = report.missing_keywords || [];
+      if (keywords.length === 0) {
+        keywordsContainer.innerHTML = '<span class="text-xs font-mono text-emerald-800">No major keyword discrepancies detected against JD!</span>';
+      } else {
+        keywords.forEach(kw => {
+          const tag = document.createElement('span');
+          tag.className = 'inline-flex items-center gap-1 px-2.5 py-1 bg-amber-200 border-2 border-slate-900 text-slate-950 text-xs md:text-sm font-pixel-title shadow-[2px_2px_0px_#1a1a1a]';
+          tag.innerHTML = `<span class="text-red-700">✗</span> ${escapeHtml(kw)}`;
+          keywordsContainer.appendChild(tag);
+        });
+      }
+
+      // SWOT Pillars
+      const swot = report.swot_report || {};
+      document.getElementById('swot-strengths').textContent = swot.strengths || "Candidate demonstrates strong core competencies.";
+      document.getElementById('swot-weaknesses').textContent = swot.weaknesses || "No notable weaknesses flagged.";
+      document.getElementById('swot-opportunities').textContent = swot.opportunities || "Highlight project metrics and technical trade-offs in interviews.";
+      document.getElementById('swot-threats').textContent = swot.threats || "General competitive applicant considerations.";
+    }
+
+    // Screen Navigation
+    function transitionToScreen2() {
+      document.getElementById('screen-1').classList.add('hidden');
+      document.getElementById('screen-2').classList.remove('hidden');
+      document.getElementById('bottom-left-nav').classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function returnToUploadScreen() {
+      document.getElementById('screen-2').classList.add('hidden');
+      document.getElementById('bottom-left-nav').classList.add('hidden');
+      document.getElementById('screen-1').classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Helper: basic HTML escape
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>
